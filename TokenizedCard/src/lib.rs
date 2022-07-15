@@ -117,8 +117,8 @@ impl Contract {
         };
 
         assert!(
-            self.tokens_by_id.insert(&token_id, &token).is_none(),
-            "Token already exists"
+        self.tokens_by_id.insert(&token_id, &token).is_none(),
+        "Token already exists"
         );
 
         self.token_metadata_by_id.insert(&token_id, &metadata);
@@ -129,6 +129,26 @@ impl Contract {
 
         refund_deposit(required_storage_in_bytes);
     }
+    
+    pub(crate) fn internal_add_token_to_owner(
+        &mut self,
+        account_id: &AccountId,
+        token_id: &TokenId,
+      ) {
+        let mut tokens_set = self.tokens.tokens_per_owner.get(account_id).unwrap_or_else(|| {
+          UnorderedSet::new(
+              StorageKey::TokenPerOwnerInner {
+                  account_id_hash: hash_account_id(&account_id),
+              }
+              .try_to_vec()
+              .unwrap(),
+          )
+        });
+    
+        tokens_set.insert(token_id);
+        self.tokens.tokens_per_owner.insert(account_id, &tokens_set);
+        self.tokens.owner_by_id.insert(token_id, account_id);
+      }
 }
 
 fn refund_deposit(storage_used: u64) {
