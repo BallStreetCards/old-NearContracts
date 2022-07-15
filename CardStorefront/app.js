@@ -10,9 +10,19 @@ async function main() {
 
   const { connect, keyStores, WalletConnection } = nearAPI;
 
+  // creates a keyStore that searches for keys in .near-credentials
+  // creates a keyStore that searches for keys in .near-credentials
+  // requires credentials stored locally by using a NEAR-CLI command: `near login` 
+  // https://docs.near.org/docs/tools/near-cli#near-login
+
+  const homedir = require("os").homedir();
+  const CREDENTIALS_DIR = ".near-credentials";
+  const credentialsPath = require("path").join(homedir, CREDENTIALS_DIR);
+  const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
+
   const config = {
     networkId: "testnet",
-    keyStore: new keyStores.BrowserLocalStorageKeyStore(),
+    keyStore,
     nodeUrl: "https://rpc.testnet.near.org",
     walletUrl: "https://wallet.testnet.near.org",
     helperUrl: "https://helper.testnet.near.org",
@@ -27,7 +37,7 @@ async function main() {
 
   const signIn = () => {
     wallet.requestSignIn(
-      "example-contract.testnet", // contract requesting access
+      "akileus0.testnet", // contract requesting access
       "Example App", // optional
       "http://YOUR-URL.com/success", // optional
       "http://YOUR-URL.com/failure" // optional
@@ -51,8 +61,10 @@ async function main() {
   const account = await near.account("akileus0.testnet");
 
   // gets account balance
-  await account.getAccountBalance();
-  await account.getAccountDetails();
+  const balance = await account.getAccountBalance();
+  const detail = await account.getAccountDetails();
+
+  console.log("Balance:", balance)
 }
 
 // app.get("/", (req, res) => res.send("Hello World!"));
@@ -63,3 +75,5 @@ async function main() {
 
 //visit localhost:3000
 // assuming you have done 1) npm init 2) npm install express
+
+main()
