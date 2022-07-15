@@ -48,8 +48,6 @@ async function main() {
   const detail = await account.getAccountDetails();
 
   console.log("Balance:", balance);
-  console.log("Balance:", detail);
-  console.log("Balance:", balance);
 
   const contract = new nearAPI.Contract(
     account, // the account object that is connecting
