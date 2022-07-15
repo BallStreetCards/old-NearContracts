@@ -54,7 +54,7 @@ impl Contract {
             owner_id,
             NFTContractMetadata {
                 spec: NFT_METADATA_SPEC.to_string(),
-                name: "Example NEAR non-fungible token".to_string(),
+                name: "TokenizedCard".to_string(),
                 symbol: "EXAMPLE".to_string(),
                 icon: Some(DATA_IMAGE_SVG_NEAR_ICON.to_string()),
                 base_uri: None,
