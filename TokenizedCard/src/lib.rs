@@ -20,6 +20,7 @@ use near_contract_standards::non_fungible_token::metadata::{
 };
 use near_contract_standards::non_fungible_token::{Token, TokenId};
 use near_contract_standards::non_fungible_token::NonFungibleToken;
+use near_contract_standards::non_fungible_token::{approval::NonFungibleTokenApproval}
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::collections::LazyOption;
 use near_sdk::{
@@ -95,9 +96,58 @@ impl Contract {
         receiver_id: AccountId,
         token_metadata: TokenMetadata,
     ) -> Token {
-        self.tokens.mint(token_id, receiver_id, Some(token_metadata))
+        // self.tokens.mint(token_id, receiver_id, Some(token_metadata))
+        let initial_storage_usage = env::storage_usage();
+
+        let mut royalty = HashMap::new();
+
+        if let Some(perpetual_royalties) = perpetual_royalties {
+            assert!(perpetual_royalties.len() < 7, "Cannot add more than 6 perpetual royalty amounts");
+
+            for (account, amount) in perpetual_royalties {
+                royalty.insert(account, amount);
+            }
+        }
+
+        let token = Token {
+            owner_id: receiver_id,
+            approved_account_ids: Default::default(),
+            next_approval_id: 0,
+            royalty,
+        };
+
+        assert!(
+            self.tokens_by_id.insert(&token_id, &token).is_none(),
+            "Token already exists"
+        );
+
+        self.token_metadata_by_id.insert(&token_id, &metadata);
+
+        self.internal_add_token_to_owner(&token.owner_id, &token_id);
+
+        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
+
+        refund_deposit(required_storage_in_bytes);
     }
 }
+
+fn refund_deposit(storage_used: u64) {
+    let required_cost = env::storage_byte_cost() * Balance::from(storage_used);
+  
+    let attached_deposit = env::attached_deposit();
+  
+    assert!(
+      required_cost <= attached_deposit,
+      "Must attach {} yoctoNEAR to cover storage",
+      required_cost
+    );
+  
+    let refund = attached_deposit - required_cost;
+  
+    if refund > 1 {
+      Promise::new(env::predecessor_account_id()).transfer(refund);
+    }
+  }
 
 near_contract_standards::impl_non_fungible_token_core!(Contract, tokens);
 near_contract_standards::impl_non_fungible_token_approval!(Contract, tokens);
