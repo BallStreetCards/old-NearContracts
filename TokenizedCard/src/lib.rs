@@ -16,169 +16,159 @@ NOTES:
     keys on its account.
 */
 use near_contract_standards::non_fungible_token::metadata::{
-    NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata, NFT_METADATA_SPEC,
-};
-use near_contract_standards::non_fungible_token::{Token, TokenId};
-use near_contract_standards::non_fungible_token::NonFungibleToken;
-use near_contract_standards::non_fungible_token::{approval::NonFungibleTokenApproval}
-use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::collections::LazyOption;
-use near_sdk::{
-    env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, Promise, PromiseOrValue,
-};
-
-#[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-pub struct Contract {
+    NFTContractMetadata, NonFungibleTokenMetadataProvider,
+  };
+  use near_contract_standards::non_fungible_token::{ TokenId, Token };
+  use near_contract_standards::non_fungible_token::NonFungibleToken;
+  use near_sdk::borsh::{ self, BorshDeserialize, BorshSerialize };
+  use near_sdk::collections::{LazyOption, UnorderedSet};
+  use near_sdk::{
+    env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue, Promise, CryptoHash, Balance,
+  };
+  
+  #[near_bindgen]
+  #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
+  pub struct TokenizedCard {
     tokens: NonFungibleToken,
     metadata: LazyOption<NFTContractMetadata>,
-}
-
-const DATA_IMAGE_SVG_NEAR_ICON: &str = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 288 288'%3E%3Cg id='l' data-name='l'%3E%3Cpath d='M187.58,79.81l-30.1,44.69a3.2,3.2,0,0,0,4.75,4.2L191.86,103a1.2,1.2,0,0,1,2,.91v80.46a1.2,1.2,0,0,1-2.12.77L102.18,77.93A15.35,15.35,0,0,0,90.47,72.5H87.34A15.34,15.34,0,0,0,72,87.84V201.16A15.34,15.34,0,0,0,87.34,216.5h0a15.35,15.35,0,0,0,13.08-7.31l30.1-44.69a3.2,3.2,0,0,0-4.75-4.2L96.14,186a1.2,1.2,0,0,1-2-.91V104.61a1.2,1.2,0,0,1,2.12-.77l89.55,107.23a15.35,15.35,0,0,0,11.71,5.43h3.13A15.34,15.34,0,0,0,216,201.16V87.84A15.34,15.34,0,0,0,200.66,72.5h0A15.35,15.35,0,0,0,187.58,79.81Z'/%3E%3C/g%3E%3C/svg%3E";
-
-#[derive(BorshSerialize, BorshStorageKey)]
-enum StorageKey {
+    total_supply: u128,
+    cost_per_token: u128,
+  }
+  
+  #[derive(BorshSerialize, BorshStorageKey)]
+  enum StorageKey {
     NonFungibleToken,
     Metadata,
     TokenMetadata,
     Enumeration,
     Approval,
-}
-
-#[near_bindgen]
-impl Contract {
-    /// Initializes the contract owned by `owner_id` with
-    /// default metadata (for example purposes only).
+    TokenPerOwnerInner { account_id_hash: CryptoHash },
+  }
+  
+  #[near_bindgen]
+  impl TokenizedCard {
+    /// Initializes the contract owned by `owner_id` with metadata, cost_per_token and toal_supply
     #[init]
-    pub fn new_default_meta(owner_id: AccountId) -> Self {
-        Self::new(
-            owner_id,
-            NFTContractMetadata {
-                spec: NFT_METADATA_SPEC.to_string(),
-                name: "TokenizedCard".to_string(),
-                symbol: "EXAMPLE".to_string(),
-                icon: Some(DATA_IMAGE_SVG_NEAR_ICON.to_string()),
-                base_uri: None,
-                reference: None,
-                reference_hash: None,
-            },
-        )
-    }
-
-    #[init]
-    pub fn new(owner_id: AccountId, metadata: NFTContractMetadata) -> Self {
-        assert!(!env::state_exists(), "Already initialized");
-        metadata.assert_valid();
-        Self {
-            tokens: NonFungibleToken::new(
-                StorageKey::NonFungibleToken,
-                owner_id,
-                Some(StorageKey::TokenMetadata),
-                Some(StorageKey::Enumeration),
-                Some(StorageKey::Approval),
-            ),
-            metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
-        }
-    }
-
-    /// Mint a new token with ID=`token_id` belonging to `receiver_id`.
-    ///
-    /// Since this example implements metadata, it also requires per-token metadata to be provided
-    /// in this call. `self.tokens.mint` will also require it to be Some, since
-    /// `StorageKey::TokenMetadata` was provided at initialization.
-    ///
-    /// `self.tokens.mint` will enforce `predecessor_account_id` to equal the `owner_id` given in
-    /// initialization call to `new`.
-    #[payable]
-    pub fn nft_mint(
-        &mut self,
-        token_id: TokenId,
-        receiver_id: AccountId,
-        token_metadata: TokenMetadata,
-    ) -> Token {
-        // self.tokens.mint(token_id, receiver_id, Some(token_metadata))
-        let initial_storage_usage = env::storage_usage();
-
-        let mut royalty = HashMap::new();
-
-        if let Some(perpetual_royalties) = perpetual_royalties {
-            assert!(perpetual_royalties.len() < 7, "Cannot add more than 6 perpetual royalty amounts");
-
-            for (account, amount) in perpetual_royalties {
-                royalty.insert(account, amount);
-            }
-        }
-
-        let token = Token {
-            owner_id: receiver_id,
-            approved_account_ids: Default::default(),
-            next_approval_id: 0,
-            royalty,
-        };
-
-        assert!(
-        self.tokens_by_id.insert(&token_id, &token).is_none(),
-        "Token already exists"
-        );
-
-        self.token_metadata_by_id.insert(&token_id, &metadata);
-
-        self.internal_add_token_to_owner(&token.owner_id, &token_id);
-
-        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
-
-        refund_deposit(required_storage_in_bytes);
-    }
-    
-    pub(crate) fn internal_add_token_to_owner(
-        &mut self,
-        account_id: &AccountId,
-        token_id: &TokenId,
-      ) {
-        let mut tokens_set = self.tokens.tokens_per_owner.get(account_id).unwrap_or_else(|| {
-          UnorderedSet::new(
-              StorageKey::TokenPerOwnerInner {
-                  account_id_hash: hash_account_id(&account_id),
-              }
-              .try_to_vec()
-              .unwrap(),
-          )
-        });
-    
-        tokens_set.insert(token_id);
-        self.tokens.tokens_per_owner.insert(account_id, &tokens_set);
-        self.tokens.owner_by_id.insert(token_id, account_id);
+    pub fn new(
+      owner_id: AccountId, 
+      metadata: NFTContractMetadata,
+      total_supply: u128,
+      cost_per_token: u128
+    ) -> Self {
+      assert!(!env::state_exists(), "Already initialized");
+      metadata.assert_valid();
+      Self {
+        tokens: NonFungibleToken::new(
+          StorageKey::NonFungibleToken,
+          owner_id,
+          Some(StorageKey::TokenMetadata),
+          Some(StorageKey::Enumeration),
+          Some(StorageKey::Approval),
+        ),
+        metadata: LazyOption::new(StorageKey::Metadata, Some(&metadata)),
+        total_supply,
+        cost_per_token,
       }
-}
-
-fn refund_deposit(storage_used: u64) {
-    let required_cost = env::storage_byte_cost() * Balance::from(storage_used);
+    }
   
-    let attached_deposit = env::attached_deposit();
+    #[payable]
+    pub fn buy(
+      &mut self,
+      receiver_id: AccountId,
+    ) -> u64 {
+      let tokens_minted: u64 = self.tokens.owner_by_id.len();
+      let mut attached_deposit = env::attached_deposit();
+      let mut count = 1;
+      loop {
+        if (tokens_minted + count) as u128 > self.total_supply {
+          // refund rest amount
+          Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
+          break;
+        }
   
-    assert!(
-      required_cost <= attached_deposit,
-      "Must attach {} yoctoNEAR to cover storage",
-      required_cost
-    );
+        let initial_storage_usage = env::storage_usage();
+        
+        let token_id = format!("TokenizedCard-{}", tokens_minted + count);
   
-    let refund = attached_deposit - required_cost;
+        self.internal_add_token_to_owner(&receiver_id, token_id);
   
-    if refund > 1 {
-      Promise::new(env::predecessor_account_id()).transfer(refund);
+        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
+        let required_cost = env::storage_byte_cost() * Balance::from(required_storage_in_bytes) + self.cost_per_token;
+  
+        if required_cost > attached_deposit {
+          self.internal_remove_token_from_owner(&receiver_id, token_id);
+          if attached_deposit > 1 {
+            // refund rest amount
+            Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
+            break;
+          }
+        }
+  
+        attached_deposit -= required_cost;
+  
+        count += 1;
+      }
+  
+      count - 1
+    }
+  
+    pub(crate) fn internal_add_token_to_owner(
+      &mut self,
+      account_id: &AccountId,
+      token_id: &TokenId,
+    ) {
+      let mut tokens_set = self.tokens.tokens_per_owner.get(account_id).unwrap_or_else(|| {
+        UnorderedSet::new(
+            StorageKey::TokenPerOwnerInner {
+                account_id_hash: hash_account_id(&account_id),
+            }
+            .try_to_vec()
+            .unwrap(),
+        )
+      });
+  
+      tokens_set.insert(token_id);
+      self.tokens.tokens_per_owner.insert(account_id, &tokens_set);
+      self.tokens.owner_by_id.insert(token_id, account_id);
+    }
+  
+    pub(crate) fn internal_remove_token_from_owner(
+      &mut self,
+      account_id: &AccountId,
+      token_id: &TokenId,
+    ) {
+      let mut tokens_set = self.tokens..tokens_per_owner
+        .get(account_id)
+        .expect("Token should be owned by the sender");
+  
+      tokens_set.remove(token_id);
+      self.tokens.owner_by_id.remove(token_id);
+      if tokens_set.is_empty() {
+          self.tokens.tokens_per_owner.remove(&account_id);
+      } else {
+          self.tokens.tokens_per_owner.insert(&account_id, &tokens_set);
+      }
+    }  
+  }
+  
+  near_contract_standards::impl_non_fungible_token_core!(TokenizedCard, tokens);
+  near_contract_standards::impl_non_fungible_token_approval!(TokenizedCard, tokens);
+  near_contract_standards::impl_non_fungible_token_enumeration!(TokenizedCard, tokens);
+  
+  #[near_bindgen]
+  impl NonFungibleTokenMetadataProvider for TokenizedCard {
+    fn nft_metadata(&self) -> NFTContractMetadata {
+     self.metadata.get().unwrap()
     }
   }
-
-near_contract_standards::impl_non_fungible_token_core!(Contract, tokens);
-near_contract_standards::impl_non_fungible_token_approval!(Contract, tokens);
-near_contract_standards::impl_non_fungible_token_enumeration!(Contract, tokens);
-
-#[near_bindgen]
-impl NonFungibleTokenMetadataProvider for Contract {
-    fn nft_metadata(&self) -> NFTContractMetadata {
-        self.metadata.get().unwrap()
-    }
-}
+  
+  
+  pub(crate) fn hash_account_id(account_id: &AccountId) -> CryptoHash {
+    let mut hash = CryptoHash::default();
+    
+    hash.copy_from_slice(&env::sha256(account_id.as_bytes()));
+    hash
+  }
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
