@@ -1,20 +1,3 @@
-/*!
-Non-Fungible Token implementation with JSON serialization.
-NOTES:
-  - The maximum balance value is limited by U128 (2**128 - 1).
-  - JSON calls should pass U128 as a base-10 string. E.g. "100".
-  - The contract optimizes the inner trie structure by hashing account IDs. It will prevent some
-    abuse of deep tries. Shouldn't be an issue, once NEAR clients implement full hashing of keys.
-  - The contract tracks the change in storage before and after the call. If the storage increases,
-    the contract requires the caller of the contract to attach enough deposit to the function call
-    to cover the storage cost.
-    This is done to prevent a denial of service attack on the contract by taking all available storage.
-    If the storage decreases, the contract will issue a refund for the cost of the released storage.
-    The unused tokens from the attached deposit are also refunded, so it's safe to
-    attach more deposit than required.
-  - To prevent the deployed contract from being modified or deleted, it should not have any access
-    keys on its account.
-*/
 use near_contract_standards::non_fungible_token::metadata::{
   NFTContractMetadata, NonFungibleTokenMetadataProvider,
 };
@@ -49,7 +32,7 @@ enum StorageKey {
 impl TokenizedCard {
   /// Initializes the contract owned by `owner_id` with metadata, cost_per_token and toal_supply
   #[init]
-  pub fn initialize(
+  pub fn new(
     owner_id: AccountId, 
     metadata: NFTContractMetadata,
     total_supply: u128,

@@ -51,7 +51,7 @@ async function initialize() {
 
   // gets account balance
   const balance = await account.getAccountBalance();
-  console.log("Balance:", balance);
+  // console.log("Balance:", balance);
 
   const contract = new nearAPI.Contract(
     account, // the account object that is connecting
@@ -59,24 +59,34 @@ async function initialize() {
     {
       // name of contract you're connecting to
       viewMethods: ["getMessages"], // view methods do not change state but usually return a value
-      changeMethods: ["addMessage"], // change methods modify state
-      sender: account, // account object to initialize and sign transactions.
+      changeMethods: [
+        "new",
+        "buy",
+        "internal_add_token_to_owner",
+        "internal_remove_token_from_owner",
+      ], // change methods modify state
+      sender: process.env.CONTRACT_NAME, // account object to initialize and sign transactions.
     }
   );
 
-  const response = await contract.initialize(
-    {
-      owner_id: process.env.CONTRACT_NAME,
-      metadata: {
+  try {
+    const response = await contract.new({
+      args: {
         owner_id: process.env.CONTRACT_NAME,
+        metadata: {
+          spec: "nft-1.0.0",
+          name: "tokenized",
+          symbol: "TK",
+        },
+        total_supply: 100,
+        cost_per_token: 5,
       },
-      total_supply: "1000",
-      cost_per_token: "20",
-    },
-    "300000000000000", // attached GAS (optional)
-    "1000000000000000000000000" // attached deposit in yoctoNEAR (optional)
-  );
-  console.log(response);
+    });
+    console.log(response);
+  } catch (error) {
+    console.log(error);
+  }
 }
 
+// deploy();
 initialize();
