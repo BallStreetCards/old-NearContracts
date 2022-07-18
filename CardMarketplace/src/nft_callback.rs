@@ -95,14 +95,14 @@ impl NonFungibleTokenApprovalsReceiver for Contract {
 
     //get the sales by owner ID for the given owner. If there are none, we create a new empty set
     let mut by_owner_id = self.by_owner_id.get(&owner_id).unwrap_or_else(|| {
-        UnorderedSet::new(
-            StorageKey::ByOwnerIdInner {
-                //we get a new unique prefix for the collection by hashing the owner
-                account_id_hash: hash_account_id(&owner_id),
-            }
-            .try_to_vec()
-            .unwrap(),
-        )
+      UnorderedSet::new(
+          StorageKey::ByOwnerIdInner {
+              //we get a new unique prefix for the collection by hashing the owner
+              account_id_hash: hash_account_id(&owner_id),
+          }
+          .try_to_vec()
+          .unwrap(),
+      )
     });
     
     //insert the unique sale ID into the set
