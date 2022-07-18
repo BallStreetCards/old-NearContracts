@@ -49,7 +49,6 @@ pub type ContractAndTokenId = String;
 pub struct Contract{
   //keep track of the owner of the contract
   pub owner_id: AccountId,
-    
   /*
       to keep track of the sales, we map the ContractAndTokenId to a Sale. 
       the ContractAndTokenId is the unique identifier for every sale. It is made
@@ -65,5 +64,53 @@ pub struct Contract{
 
   //keep track of the storage that accounts have payed
   pub storage_deposits: LookupMap<AccountId, Balance>,
+
+  //percentage to take as fee from every 'buy' transaction
+  pub fee: u128,
+  
+  //where to transfer the fee
+  pub fee_recipient: AccountId,
 }
 
+/// Helper structure to for keys of the persistent collections.
+#[derive(BorshStorageKey, BorshSerialize)]
+
+pub enum StorageKey {
+  Sales,
+  ByOwnerId,
+  ByOwnerIdInner { account_id_hash: CryptoHash },
+  ByNFTContractId,
+  ByNFTContractIdInner { account_id_hash: CryptoHash },
+  ByNFTTokenType,
+  ByNFTTokenTypeInner { token_type_hash: CryptoHash },
+  FTTokenIds,
+  StorageDeposits,
+}
+
+#[near_bindgen]
+impl Contract {
+  /*
+      initialization function (can only be called once).
+      this initializes the contract with default data and the owner ID
+      that's passed in
+  */
+  #[init]
+  pub fn new(owner_id: AccountId, fee:u128, fee_recipient: AccountId) -> Self {
+    let this = Self {
+        //set the owner_id field equal to the passed in owner_id. 
+        owner_id,
+
+        //Storage keys are simply the prefixes used for the collections. This helps avoid data collision
+        sales: UnorderedMap::new(StorageKey::Sales),
+        by_owner_id: LookupMap::new(StorageKey::ByOwnerId),
+        by_nft_contract_id: LookupMap::new(StorageKey::ByNFTContractId),
+        storage_deposits: LookupMap::new(StorageKey::StorageDeposits),
+        fee,
+        fee_recipient,
+    };
+
+    //return the Contract object
+    this
+  }
+
+}
