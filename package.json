@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "cd TokenizedCard && bash ./build.sh && cd .."
+    "build": "cd tokenized_card && bash ./build.sh && cd .."
   },
   "repository": {
     "type": "git",
