@@ -22,7 +22,7 @@ pub struct Sale {
 impl Contract {
   //removes a sale from the market. 
   #[payable]
-  pub fn remove_sale(&mut self, nft_contract_id: AccountId, token_id: String) {
+  pub fn unlist(&mut self, nft_contract_id: AccountId, token_id: String) {
     //assert that the user has attached exactly 1 yoctoNEAR (for security reasons)
     assert_one_yocto();
     //get the sale object as the return value from removing the sale internally
@@ -66,7 +66,7 @@ impl Contract {
 
   //place an offer on a specific sale. The sale will go through as long as your deposit is greater than or equal to the list price
   #[payable]
-  pub fn offer(&mut self, nft_contract_id: AccountId, token_id: String) {
+  pub fn buy(&mut self, nft_contract_id: AccountId, token_id: String) {
     //get the attached deposit and make sure it's greater than 0
     let deposit = env::attached_deposit();
     assert!(deposit > 0, "Attached deposit must be greater than 0");
@@ -107,6 +107,8 @@ impl Contract {
       token_id: String,
       price: U128,
       buyer_id: AccountId,
+      fee: U128,
+      fee_recipient: AccountId,
   ) -> Promise {
     //get the sale object by removing the sale
     let sale = self.internal_remove_sale(nft_contract_id.clone(), token_id.clone());
@@ -129,15 +131,17 @@ impl Contract {
         price,
         10, //the maximum amount of accounts the market can payout at once (this is limited by GAS)
         )
-    //after the transfer payout has been initiated, we resolve the promise by calling our own resolve_purchase function. 
-    //resolve purchase will take the payout object returned from the nft_transfer_payout and actually pay the accounts
-    .then(
-        // No attached deposit with static GAS equal to the GAS for resolving the purchase. Also attach an unused GAS weight of 1 by default.
-        Self::ext(env::current_account_id())
-        .with_static_gas(GAS_FOR_RESOLVE_PURCHASE)
-        .resolve_purchase(
+        //after the transfer payout has been initiated, we resolve the promise by calling our own resolve_purchase function. 
+        //resolve purchase will take the payout object returned from the nft_transfer_payout and actually pay the accounts
+        .then(
+          // No attached deposit with static GAS equal to the GAS for resolving the purchase. Also attach an unused GAS weight of 1 by default.
+          Self::ext(env::current_account_id())
+          .with_static_gas(GAS_FOR_RESOLVE_PURCHASE)
+          .resolve_purchase(
             buyer_id, //the buyer and price are passed in incase something goes wrong and we need to refund the buyer
             price,
+            fee,
+            fee_recipient,
         )
     )
   }
@@ -152,6 +156,8 @@ impl Contract {
       &mut self,
       buyer_id: AccountId,
       price: U128,
+      fee: U128,
+      fee_recipient: AccountId,
   ) -> U128 {
     // checking for payout information returned from the nft_transfer_payout method
     let payout_option = promise_result_as_success().and_then(|value| {
@@ -202,7 +208,9 @@ impl Contract {
 
     // NEAR payouts
     for (receiver_id, amount) in payout {
-        Promise::new(receiver_id).transfer(amount.0);
+      let fee_amount = amount.0 * fee / 100;
+      Promise::new(fee_recipient).transfer(fee_amount);
+      Promise::new(receiver_id).transfer(amount.0 - fee_amount);
     }
 
     //return the price payout out
