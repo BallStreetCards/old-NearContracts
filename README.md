@@ -26,6 +26,8 @@
    Constructor params
    * fee - percentage to take as fee from every 'buy' transaction
    * feeRecipient - where to transfer the fee
+
+
    Methods
    * allowlistCard (addr tokenizedCard, uint minPricePerToken)
      * Whitelists a TokenizedCard smart contract for listing on the 2ndary marketplace
