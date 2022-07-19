@@ -1,16 +1,16 @@
 [package]
-name = "CardMarketplace"
+name = "card_marketplace"
 version = "0.1.0"
 edition = "2021"
 authors = ["Akileus"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
 near-sdk = "4.0.0"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
 
 [profile.release]
 codegen-units=1
