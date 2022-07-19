@@ -32,6 +32,25 @@ impl Contract {
     //if this fails, the remove sale will revert
     assert_eq!(owner_id, sale.owner_id, "Must be sale owner");
   }
+
+  #[payable]
+  pub fn list(&mut self, nft_contract_id: AccountId, token_id: String, price: U128) {
+    //assert that the user has attached exactly 1 yoctoNEAR (for security reasons)
+    assert_one_yocto();
+
+   Sale {
+      //owner of the sale
+      owner_id: env::predecessor_account_id(),
+      //market contract's approval ID to transfer the token on behalf of the owner
+      approval_id: self.approval ++,
+      //nft contract where the token was minted
+      nft_contract_id: nft_contract_id.into(),
+      //actual token ID for sale
+      token_id: token_id,
+      //sale price in yoctoNEAR that the token is listed for
+      sale_conditions: price,
+    }
+  }
   
   //updates the price for a sale on the market
   #[payable]
@@ -107,8 +126,6 @@ impl Contract {
       token_id: String,
       price: U128,
       buyer_id: AccountId,
-      fee: U128,
-      fee_recipient: AccountId,
   ) -> Promise {
     //get the sale object by removing the sale
     let sale = self.internal_remove_sale(nft_contract_id.clone(), token_id.clone());
@@ -140,8 +157,6 @@ impl Contract {
           .resolve_purchase(
             buyer_id, //the buyer and price are passed in incase something goes wrong and we need to refund the buyer
             price,
-            fee,
-            fee_recipient,
         )
     )
   }
@@ -208,8 +223,8 @@ impl Contract {
 
     // NEAR payouts
     for (receiver_id, amount) in payout {
-      let fee_amount = amount.0 * fee / 100;
-      Promise::new(fee_recipient).transfer(fee_amount);
+      let fee_amount = amount.0 * self.fee / 100;
+      Promise::new(self.fee_recipient).transfer(fee_amount);
       Promise::new(receiver_id).transfer(amount.0 - fee_amount);
     }
 
