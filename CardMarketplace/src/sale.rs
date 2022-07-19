@@ -38,18 +38,22 @@ impl Contract {
     //assert that the user has attached exactly 1 yoctoNEAR (for security reasons)
     assert_one_yocto();
 
-   Sale {
+    let contract_and_token_id = format!("{}{}{}", contract_id, DELIMETER, token_id);
+
+    let sale = Sale {
       //owner of the sale
       owner_id: env::predecessor_account_id(),
       //market contract's approval ID to transfer the token on behalf of the owner
-      approval_id: self.approval ++,
+      approval_id: self.sales.len() + 1,
       //nft contract where the token was minted
       nft_contract_id: nft_contract_id.into(),
       //actual token ID for sale
       token_id: token_id,
       //sale price in yoctoNEAR that the token is listed for
       sale_conditions: price,
-    }
+    };
+
+    self.sales.insert(contract_and_token_id, sale);
   }
   
   //updates the price for a sale on the market

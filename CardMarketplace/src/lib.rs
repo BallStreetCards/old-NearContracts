@@ -19,9 +19,10 @@ use near_sdk::env::STORAGE_PRICE_PER_BYTE;
 
 mod external;
 mod internal;
-mod nft_callbacks;
+mod nft_callback;
 mod sale;
-mod sale_views;
+mod sale_view;
+mod whitelist;
 
 //GAS constants to attach to calls
 const GAS_FOR_RESOLVE_PURCHASE: Gas = Gas(115_000_000_000_000);
@@ -43,8 +44,6 @@ pub type ContractAndTokenId = String;
 //main contract struct to store all the information
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
-
-
 
 pub struct Contract{
   //keep track of the owner of the contract
@@ -70,6 +69,9 @@ pub struct Contract{
   
   //where to transfer the fee
   pub fee_recipient: AccountId,
+
+  // whitelist to 
+  pub whitelist: UnorderedMap<AccountId, U64>
 }
 
 /// Helper structure to for keys of the persistent collections.
@@ -119,19 +121,19 @@ impl Contract {
   pub fn storage_deposit(&mut self, account_id: Option<AccountId>) {
     //get the account ID to pay for storage for
     let storage_account_id = account_id 
-        //convert the valid account ID into an account ID
-        .map(|a| a.into())
-        //if we didn't specify an account ID, we simply use the caller of the function
-        .unwrap_or_else(env::predecessor_account_id);
+      //convert the valid account ID into an account ID
+      .map(|a| a.into())
+      //if we didn't specify an account ID, we simply use the caller of the function
+      .unwrap_or_else(env::predecessor_account_id);
 
     //get the deposit value which is how much the user wants to add to their storage
     let deposit = env::attached_deposit();
 
     //make sure the deposit is greater than or equal to the minimum storage for a sale
     assert!(
-        deposit >= STORAGE_PER_SALE,
-        "Requires minimum deposit of {}",
-        STORAGE_PER_SALE
+      deposit >= STORAGE_PER_SALE,
+      "Requires minimum deposit of {}",
+      STORAGE_PER_SALE
     );
 
     //get the balance of the account (if the account isn't in the map we default to a balance of 0)
@@ -169,13 +171,13 @@ impl Contract {
 
     //if that excess to withdraw is > 0, we transfer the amount to the user.
     if amount > 0 {
-        Promise::new(owner_id.clone()).transfer(amount);
+      Promise::new(owner_id.clone()).transfer(amount);
     }
     //we need to add back the storage being used up into the map if it's greater than 0.
     //this is so that if the user had 500 sales on the market, we insert that value here so
     //if those sales get taken down, the user can then go and withdraw 500 sales worth of storage.
     if diff > 0 {
-        self.storage_deposits.insert(&owner_id, &diff);
+      self.storage_deposits.insert(&owner_id, &diff);
     }
   }
 

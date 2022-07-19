@@ -18,6 +18,6 @@ trait ExtContract {
       */
       balance: U128,
       //the maximum amount of accounts the market can payout at once (this is limited by GAS)
-		  max_len_payout: u32,
+      max_len_payout: u32,
     );
 }
