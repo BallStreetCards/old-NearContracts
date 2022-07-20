@@ -15,15 +15,13 @@ const port = 3000;
 const { connect, KeyPair, keyStores, WalletConnection } = nearAPI;
 
 const fs = require("fs");
-const { async } = require("regenerator-runtime");
-const { response } = require("express");
 const homedir = require("os").homedir();
 
 const ACCOUNT_ID = `${process.env.CONTRACT_NAME}`; // NEAR account tied to the keyPair
 const NETWORK_ID = `${process.env.NODE_ENV}`;
 // path to your custom keyPair location (ex. function access key for example account)
 
-const KEY_PATH = `/.near-credentials/testnet/${process.env.CONTRACT_NAME}.json`;
+const KEY_PATH = `/.near-credentials/testnet/${ACCOUNT_ID}.json`;
 const credentialsPath = require("path").join(homedir, KEY_PATH);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
 
@@ -46,7 +44,7 @@ app.get("/", (req, res) => {
 app.get("/deploy", async (req, res) => {
   // connect to NEAR
   const near = await connect(config);
-  const account = await near.account(`${process.env.CONTRACT_NAME}`);
+  const account = await near.account(ACCOUNT_ID);
 
   // gets account balance
   const balance = await account.getAccountBalance();
@@ -62,7 +60,7 @@ app.get("/deploy", async (req, res) => {
 app.get("/initialize", async (req, res) => {
   // connect to NEAR
   const near = await connect(config);
-  const account = await near.account(process.env.CONTRACT_NAME);
+  const account = await near.account(ACCOUNT_ID);
 
   // gets account balance
   const balance = await account.getAccountBalance();
@@ -70,7 +68,7 @@ app.get("/initialize", async (req, res) => {
 
   const contract = new nearAPI.Contract(
     account, // the account object that is connecting
-    process.env.CONTRACT_NAME,
+    ACCOUNT_ID,
     {
       // name of contract you're connecting to
       viewMethods: ["getMessages"], // view methods do not change state but usually return a value
@@ -80,14 +78,14 @@ app.get("/initialize", async (req, res) => {
         "internal_add_token_to_owner",
         "internal_remove_token_from_owner",
       ], // change methods modify state
-      sender: process.env.CONTRACT_NAME, // account object to initialize and sign transactions.
+      sender: ACCOUNT_ID, // account object to initialize and sign transactions.
     }
   );
 
   try {
     const response = await contract.new({
       args: {
-        owner_id: process.env.CONTRACT_NAME,
+        owner_id: ACCOUNT_ID,
         metadata: {
           spec: "nft-1.0.0",
           name: "tokenized",
@@ -119,7 +117,9 @@ app.get("/new-wallet/:uid?", async (req, res) => {
     console.log(err);
   }
   console.log(new_account);
-  res.send(`New sub account ${new_account} is created successfully`);
+  res.send(
+    `New sub account "${new_account.accountId}" is created successfully`
+  );
 });
 
 app.listen(port, () => {
