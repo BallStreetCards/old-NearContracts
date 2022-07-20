@@ -37,7 +37,12 @@ const config = {
   explorerUrl: "https://explorer.testnet.near.org",
 };
 
-async function deploy() {
+app.get("/", (req, res) => {
+  res.send("Hello World!");
+});
+
+// Tokenized Card Contract deploy function
+app.get("/deploy", async (req, res) => {
   // connect to NEAR
   const near = await connect(config);
   const account = await near.account(`${process.env.CONTRACT_NAME}`);
@@ -50,9 +55,10 @@ async function deploy() {
     fs.readFileSync("../out/main.wasm")
   );
   console.log(response);
-}
+});
 
-async function initialize() {
+// Tokenized Card Initialize function
+app.get("/initialize", async (req, res) => {
   // connect to NEAR
   const near = await connect(config);
   const account = await near.account(process.env.CONTRACT_NAME);
@@ -94,10 +100,18 @@ async function initialize() {
   } catch (error) {
     console.log(error);
   }
-}
+});
 
 // deploy();
-initialize();
+// initialize();
+
+app.get("/new-wallet/:uid?", async (req, res) => {
+  // connect to NEAR
+  const near = await connect(config);
+  const account = await near.account(`${process.env.CONTRACT_NAME}`);
+
+  console.log(account);
+});
 
 app.listen(port, () => {
   console.log(`Example app listening at http://localhost:${port}`);
