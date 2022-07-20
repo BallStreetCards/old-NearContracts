@@ -103,23 +103,25 @@ app.get("/initialize", async (req, res) => {
   }
 });
 
-// deploy();
-// initialize();
-
 app.get("/new-wallet/:uid?", async (req, res) => {
-  console.log(typeof req.params.uid);
   // connect to NEAR
   const near = await connect(config);
+  // get account id and public key form credential
   const { account_id, public_key } = require(credentialsPath);
-  console.log(public_key);
+  let new_account;
+  // create new sub accout from master account
   try {
-    const new_account = await near.createAccount(req.params.uid, public_key);
+    new_account = await near.createAccount(
+      `${req.params.uid}.${account_id}`,
+      public_key
+    );
   } catch (err) {
     console.log(err);
   }
   console.log(new_account);
+  res.send(`New sub account ${new_account} is created successfully`);
 });
 
 app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
+  console.log(`CardStore app listening at http://localhost:${port}`);
 });
