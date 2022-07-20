@@ -51,7 +51,7 @@ app.get("/deploy", async (req, res) => {
   console.log("Balance:", balance);
 
   const response = await account.deployContract(
-    fs.readFileSync("../out/main.wasm")
+    fs.readFileSync("../out/tokenizedCard.wasm")
   );
   console.log(response);
 });
