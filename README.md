@@ -39,3 +39,8 @@
      * Removes a specific NFT listed by the user from the marketplace
    * buy (addr tokenizedCard, string tokenId)
      * will transfer the TokenizerCard NFT if listed by its owner for the $USN amount the user has sent or less. Should send the charged listed price amount (minus the fee) of $USN to the previous owner of the acquired cards, the fee to the feeRecipient, and refund the remaining $USN
+
+4. Sub Wallet && Fungible Token.
+  *  Create a Node.js Express /new-wallet/:uid endpoint. It should create a new NEAR wallet with the name $uid.tenamint-wallet.near. I’ll take care of securing it.
+  *  Create a another Node.js Express /buy-card/:uid/:nft-id endpoint. I’ll configure it to work as a Stripe hook to allow these people to use Stripe with Apple Pay to buy the NFTs.
+  *  Create a fungible token - tenamint-iou-usn.near. We’ll use this token together with the endpoint 2 to keep track of Stripe linked payments.   
