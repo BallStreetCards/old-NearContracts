@@ -3,7 +3,15 @@ const express = require("express");
 const nearAPI = require("near-api-js");
 require("dotenv").config();
 const app = express();
+//cors to fix cors origin, body-parser to fix the post value on the server
+const cors = require("cors");
+const bodyParser = require("body-parser");
+
+app.use(cors());
+app.use(bodyParser.json());
+
 const port = 3000;
+
 const { connect, KeyPair, keyStores, WalletConnection } = nearAPI;
 
 const fs = require("fs");
@@ -90,3 +98,7 @@ async function initialize() {
 
 // deploy();
 initialize();
+
+app.listen(port, () => {
+  console.log(`Example app listening at http://localhost:${port}`);
+});
