@@ -22,11 +22,12 @@ const homedir = require("os").homedir();
 const ACCOUNT_ID = `${process.env.CONTRACT_NAME}`; // NEAR account tied to the keyPair
 const NETWORK_ID = `${process.env.NODE_ENV}`;
 // path to your custom keyPair location (ex. function access key for example account)
-const KEY_PATH = `/.near-credentials/testnet/${process.env.CONTRACT_NAME}.json`;
 
-const CREDENTIALS_DIR = ".near-credentials";
-const credentialsPath = require("path").join(homedir, CREDENTIALS_DIR);
+const KEY_PATH = `/.near-credentials/testnet/${process.env.CONTRACT_NAME}.json`;
+const credentialsPath = require("path").join(homedir, KEY_PATH);
 const keyStore = new keyStores.UnencryptedFileSystemKeyStore(credentialsPath);
+
+// const myKeyStore = new keyStores.BrowserLocalStorageKeyStore();
 
 const config = {
   networkId: "testnet",
@@ -106,11 +107,17 @@ app.get("/initialize", async (req, res) => {
 // initialize();
 
 app.get("/new-wallet/:uid?", async (req, res) => {
+  console.log(typeof req.params.uid);
   // connect to NEAR
   const near = await connect(config);
-  const account = await near.account(`${process.env.CONTRACT_NAME}`);
-
-  console.log(account);
+  const { account_id, public_key } = require(credentialsPath);
+  console.log(public_key);
+  try {
+    const new_account = await near.createAccount(req.params.uid, public_key);
+  } catch (err) {
+    console.log(err);
+  }
+  console.log(new_account);
 });
 
 app.listen(port, () => {
