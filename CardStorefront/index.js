@@ -42,6 +42,7 @@ app.get("/", (req, res) => {
 
 // Tokenized Card Contract deploy function
 app.get("/deploy", async (req, res) => {
+  // Deploy TokenizedCard Contract
   // connect to NEAR
   const near = await connect(config);
   const account = await near.account(ACCOUNT_ID);
@@ -50,8 +51,52 @@ app.get("/deploy", async (req, res) => {
   const balance = await account.getAccountBalance();
   console.log("Balance:", balance);
 
-  const response = await account.deployContract(
+  let response = await account.deployContract(
     fs.readFileSync("../out/tokenizedCard.wasm")
+  );
+  console.log(response);
+
+  // Deploy CardMarketplace Contract
+  // get account id and public key form credential
+  const { account_id, public_key } = require(credentialsPath);
+  let marketplace_account;
+  // create new sub accout from master account
+  try {
+    marketplace_account = await near.createAccount(
+      `marketplace.${account_id}`,
+      public_key,
+      10
+    );
+  } catch (err) {
+    console.log(err);
+  }
+  console.log(
+    `New sub account "${marketplace_account.accountId}" is created successfully`
+  );
+
+  response = await account.deployContract(
+    fs.readFileSync("../out/cardMarketplace.wasm")
+  );
+  console.log(response);
+
+  // Deploy Fungible Token Contract
+  let fungible_account;
+  // create new sub accout from master account
+  try {
+    fungible_account = await near.createAccount(
+      `marketplace.${account_id}`,
+      public_key,
+      10
+    );
+  } catch (err) {
+    console.log(err);
+  }
+  console.log(
+    `New sub account "${fungible_account.accountId}" is created successfully`
+  );
+
+  response = await account.deployContract(
+    fs.readFileSync("../out/fungibleToken.wasm")
   );
   console.log(response);
 });
