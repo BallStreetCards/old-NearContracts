@@ -47,9 +47,11 @@ impl Contract {
         }
 
         let initial_storage_usage = env::storage_usage();
+        let token_id = query_get_tokenid(token1);
+        query_token_transfer(env::predecessor_account_id, token_id);
 
-        let token_id = query_get_tokenid(token1)
-
+        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
+        let required_cost = env::storage_byte_cost() * Balance::from(required_storage_in_bytes) + self.cost_per_token;
         
       }
     } else {
@@ -110,9 +112,33 @@ impl Contract {
 
     // return the supply
     let supply: Vec<Token> = call_result.unwrap();
-    supply.token_id
+    supply[0].token_id
   }
 
   #[private]
-  pub fn query_token_transfer(receiver_id: AccountId, token_id: TokenId)
+  pub fn query_token_transfer(receiver_id: AccountId, token_id: TokenId) -> Promise {
+    // Create a promise to call token.nft_supply_for_owner function
+    let promise = token_id::ext(token_id.clone())
+      .with_static_gas(Gas(5*TGAS))
+      .nft_transfer_call(receiver_id, token_id, "");
+    
+    return promise.then(
+      Self::ext(env::predecessor_account_id())
+      .with_static_gas(Gas(5*TGAS))
+      .query_get_supply_callback()
+    )
+  }
+
+  #[private]
+  pub fn query_token_transfer_callback(#[callback_result] call_result: Result<bool, PromiseError>) -> String {
+    // Check if the promise succeeded by calling the method outlined in external.rs
+    if call_result.is_err() {
+      log!("There was an error contacting {} contract", token_id);
+      return "".to_string();
+    }
+
+    // return the supply
+    let result: bool = call_result.unwrap();
+    result
+  }
 }
