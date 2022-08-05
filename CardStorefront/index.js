@@ -15,6 +15,7 @@ const port = 3000;
 const { connect, KeyPair, keyStores, WalletConnection } = nearAPI;
 
 const fs = require("fs");
+const { async } = require("regenerator-runtime");
 const homedir = require("os").homedir();
 
 const ACCOUNT_ID = `${process.env.CONTRACT_NAME}`; // NEAR account tied to the keyPair
@@ -166,6 +167,41 @@ app.get("/new-wallet/:uid?", async (req, res) => {
     `New sub account "${new_account.accountId}" is created successfully`
   );
 });
+
+app.get("/buy-card/:uid?/:nft-id?", async (req, res) => {
+  // connect to NEAR
+  const near = await connect(config);
+  const account = await near.account(ACCOUNT_ID);
+
+  const contract = new nearAPI.Contract(
+    account, // the account object that is connecting
+    ACCOUNT_ID,
+    {
+      // name of contract you're connecting to
+      viewMethods: ["getMessages"], // view methods do not change state but usually return a value
+      changeMethods: [
+        "new",
+        "buy",
+        "internal_add_token_to_owner",
+        "internal_remove_token_from_owner",
+      ], // change methods modify state
+      sender: ACCOUNT_ID, // account object to initialize and sign transactions.
+    }
+  );
+
+  try {
+    const response = await contract.buy({
+      args: {
+        owner_id: ACCOUNT_ID,
+        receiver_id: req.params.uid,
+      }
+    })
+    console.log(response);
+  } catch (error) {
+    console.log(error)
+  }
+
+})
 
 app.listen(port, () => {
   console.log(`CardStore app listening at http://localhost:${port}`);
