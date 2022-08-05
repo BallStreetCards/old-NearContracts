@@ -53,7 +53,21 @@ impl Contract {
         let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
         let required_cost = env::storage_byte_cost() * Balance::from(required_storage_in_bytes) + self.cost_per_token;
         
+        if required_cost > attached_deposit {
+          query_token_transfer(env::current_account_id, token_id);
+          if attached_deposit > 1 {
+            // refund rest amount
+            Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
+            break;
+          }
+        }
+
+        attached_deposit -= required_cost;
+
+        token1_count += 1;
       }
+
+      token1_count -= 1;
     } else {
       loop {
         if ()
