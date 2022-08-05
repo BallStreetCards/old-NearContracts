@@ -38,47 +38,59 @@ impl Contract {
     let token2_supply = query_get_supply(token2);
     let flag = true;
 
-    if flag {
-      loop {
-        if (token1_count > token1_supply) {
-          // refund  rest amount
+    loop {
+      if ((token1_count + token2_count)> (token1_supply + token2_supply)) {
+        // refund  rest amount
+        Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
+        break;
+      }
+      if (token1_count > token1_supply) flag = false;
+      if (token2_count > token2_supply) flag = true;
+
+      let initial_storage_usage = env::storage_usage();
+
+      if flag {
+        let token_id = query_get_tokenid(token1);
+        query_token_transfer(token1, env::predecessor_account_id, token_id);
+      } else {
+        let token_id = query_get_tokenid(token2);
+        query_token_transfer(token2, env::predecessor_account_id, token_id);
+      }
+
+      let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
+      let required_cost = env::storage_byte_cost() * Balance::from(required_storage_in_bytes) + self.cost_per_token;
+      
+      if required_cost > attached_deposit {
+        if flag {
+          query_token_transfer(token1, env::current_account_id, token_id);
+        } else {
+          query_token_transfer(token2, env::current_account_id, token_id);
+        }
+        if attached_deposit > 1 {
+          // refund rest amount
           Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
           break;
         }
+      }
 
-        let initial_storage_usage = env::storage_usage();
-        let token_id = query_get_tokenid(token1);
-        query_token_transfer(env::predecessor_account_id, token_id);
+      attached_deposit -= required_cost;
 
-        let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
-        let required_cost = env::storage_byte_cost() * Balance::from(required_storage_in_bytes) + self.cost_per_token;
-        
-        if required_cost > attached_deposit {
-          query_token_transfer(env::current_account_id, token_id);
-          if attached_deposit > 1 {
-            // refund rest amount
-            Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
-            break;
-          }
-        }
-
-        attached_deposit -= required_cost;
-
+      if flag {
         token1_count += 1;
+      } else {
+        token2_count += 1;
       }
-
-      token1_count -= 1;
-    } else {
-      loop {
-        if ()
-      }
+      flag = !flag;
     }
+
+    token1_count -= 1;
+    token2_count -= 1;
   }
 
   #[private]
-  pub fn query_get_supply(token_id: AccountId) -> Promise {
+  pub fn query_get_supply(token: AccountId) -> Promise {
     // Create a promise to call token.nft_supply_for_owner function
-    let promise = token_id::ext(token_id.clone())
+    let promise = token::ext(token.clone())
       .with_static_gas(Gas(5*TGAS))
       .nft_supply_for_owner(env::current_account_id());
     
@@ -103,9 +115,9 @@ impl Contract {
   }
 
   #[private]
-  pub fn query_get_tokenid(token_id: AccountId) -> Promise {
+  pub fn query_get_tokenid(token: AccountId) -> Promise {
     // Create a promise to call token.nft_tokens_for_owner
-    let promise = token_id::ext(token_id.clone())
+    let promise = token::ext(token.clone())
       .with_static_gas(Gas(5*TGAS))
       .nft_tokens_for_owner(env::current_account_id(), 1, 1)
 
@@ -130,9 +142,9 @@ impl Contract {
   }
 
   #[private]
-  pub fn query_token_transfer(receiver_id: AccountId, token_id: TokenId) -> Promise {
+  pub fn query_token_transfer(token: AccountId, receiver_id: AccountId, token_id: TokenId) -> Promise {
     // Create a promise to call token.nft_supply_for_owner function
-    let promise = token_id::ext(token_id.clone())
+    let promise = token::ext(token.clone())
       .with_static_gas(Gas(5*TGAS))
       .nft_transfer_call(receiver_id, token_id, "");
     
