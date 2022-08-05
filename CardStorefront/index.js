@@ -137,7 +137,7 @@ app.get("/initialize", async (req, res) => {
           symbol: "TK",
         },
         total_supply: 100,
-        cost_per_token: 5,
+        cost_per_token: 1,
       },
     });
     console.log(response);
