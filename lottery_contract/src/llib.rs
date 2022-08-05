@@ -34,9 +34,28 @@ impl Contract {
     let mut attached_deposit = env::attached_deposit();
     let mut token1_count = 1;
     let mut token2_count = 1;
-    let mut token1_supply = 
-    loop {
-      if ()
+    let token1_supply = query_get_supply(token1);
+    let token2_supply = query_get_supply(token2);
+    let flag = true;
+
+    if flag {
+      loop {
+        if (token1_count > token1_supply) {
+          // refund  rest amount
+          Promise::new(env::predecessor_account_id()).transfer(attached_deposit);
+          break;
+        }
+
+        let initial_storage_usage = env::storage_usage();
+
+        let token_id = query_get_tokenid(token1)
+
+        
+      }
+    } else {
+      loop {
+        if ()
+      }
     }
   }
 
@@ -45,10 +64,10 @@ impl Contract {
     // Create a promise to call token.nft_supply_for_owner function
     let promise = token_id::ext(token_id.clone())
       .with_static_gas(Gas(5*TGAS))
-      .nft_supply_for_owner(env::predecessor_account_id());
+      .nft_supply_for_owner(env::current_account_id());
     
     return promise.then(
-      Self::ext(env::current_account_id())
+      Self::ext(env::predecessor_account_id())
       .with_static_gas(Gas(5*TGAS))
       .query_get_supply_callback()
     )
@@ -66,4 +85,34 @@ impl Contract {
     let supply: U128 = call_result.unwrap();
     supply
   }
+
+  #[private]
+  pub fn query_get_tokenid(token_id: AccountId) -> Promise {
+    // Create a promise to call token.nft_tokens_for_owner
+    let promise = token_id::ext(token_id.clone())
+      .with_static_gas(Gas(5*TGAS))
+      .nft_tokens_for_owner(env::current_account_id(), 1, 1)
+
+    return promise.then(
+      Self::ext(env::predecessor_account_id())
+      .with_static_gas(Gas(5*TGAS))
+      .query_get_tokenid_callback()
+    )
+  }
+
+  #[private]
+  pub fn query_get_tokenid_callback(#[callback_result] call_result: Result<Vec<Token>, PromiseError>) -> String {
+    // Check if the promise succeeded by calling the method outlined in external.rs
+    if call_result.is_err() {
+      log!("There was an error contacting {} contract", token_id);
+      return "".to_string();
+    }
+
+    // return the supply
+    let supply: Vec<Token> = call_result.unwrap();
+    supply.token_id
+  }
+
+  #[private]
+  pub fn query_token_transfer(receiver_id: AccountId, token_id: TokenId)
 }
