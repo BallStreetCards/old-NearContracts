@@ -1,7 +1,7 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, log, near_bindgen, AccountId, Gas, Promise, PromiseError, PanicOnDefault};
+use near_sdk::{env, log, near_bindgen, AccountId, Gas, Promise, PromiseError, PanicOnDefault, Balance};
 use near_sdk::json_types::U128;
-use near_contract_standards::non_fungible_token::Token;
+use near_contract_standards::non_fungible_token::{Token, TokenId};
 
 pub mod external;
 pub use crate::external::*;
@@ -32,13 +32,13 @@ impl Contract {
   pub fn buy(
     &mut self,
     receiver_id: AccountId,
-  ) -> Promise {
+  ) -> (u128, u128) {
     
     let mut attached_deposit = env::attached_deposit();
     let mut token1_count = 1;
     let mut token2_count = 1;
-    let token1_supply = query_get_supply(token1);
-    let token2_supply = query_get_supply(token2);
+    let token1_supply = self.query_get_supply(token1);
+    let token2_supply = self.query_get_supply(token2);
     let flag = true;
 
     let random_seed: Vec<u8> = env::random_seed();
@@ -57,11 +57,11 @@ impl Contract {
       let initial_storage_usage = env::storage_usage();
       let mut token_id;
       if flag {
-        token_id = query_get_tokenid(token1);
-        query_token_transfer(token1, env::predecessor_account_id, token_id);
+        token_id = self.query_get_tokenid(token1);
+        self.query_token_transfer(token1, env::predecessor_account_id(), token_id);
       } else {
-        token_id = query_get_tokenid(token2);
-        query_token_transfer(token2, env::predecessor_account_id, token_id);
+        token_id = self.query_get_tokenid(token2);
+        self.query_token_transfer(token2, env::predecessor_account_id(), token_id);
       }
 
       let required_storage_in_bytes = env::storage_usage() - initial_storage_usage;
@@ -69,9 +69,9 @@ impl Contract {
       
       if required_cost > attached_deposit {
         if flag {
-          query_token_transfer(token1, env::current_account_id, token_id);
+          self.query_token_transfer(token1, env::current_account_id(), token_id);
         } else {
-          query_token_transfer(token2, env::current_account_id, token_id);
+          self.query_token_transfer(token2, env::current_account_id(), token_id);
         }
         if attached_deposit > 1 {
           // refund rest amount
@@ -92,12 +92,13 @@ impl Contract {
 
     token1_count -= 1;
     token2_count -= 1;
+    (token1_count, token2_count)
   }
 
   #[private]
-  pub fn query_get_supply(token: AccountId) -> Promise {
+  pub(crate) fn query_get_supply(&mut self, token: AccountId) -> Promise {
     // Create a promise to call token.nft_supply_for_owner function
-    let promise = TokenNear::ext(token.clone())
+    let promise = token_near::ext(token.clone())
       .with_static_gas(Gas(5*TGAS))
       .nft_supply_for_owner(env::current_account_id());
     
@@ -109,24 +110,24 @@ impl Contract {
   }
 
   #[private]
-  pub fn query_get_supply_callback(#[callback_result] call_result: Result<U128, PromiseError>) -> String {
+  pub fn query_get_supply_callback(#[callback_result] call_result: Result<U128, PromiseError>) -> u128 {
     // Check if the promise succeeded by calling the method outlined in external.rs
     if call_result.is_err() {
       log!("There was an error contacting get_supply contract");
-      return "".to_string();
+      return 0;
     }
 
     // return the supply
     let supply: U128 = call_result.unwrap();
-    supply
+    supply.0
   }
 
   #[private]
-  pub fn query_get_tokenid(token: AccountId) -> Promise {
+  pub(crate) fn query_get_tokenid(&mut self, token: AccountId) -> Promise {
     // Create a promise to call token.nft_tokens_for_owner
-    let promise = TokenNear::ext(token.clone())
+    let promise = token_near::ext(token.clone())
       .with_static_gas(Gas(5*TGAS))
-      .nft_tokens_for_owner(env::current_account_id(), 1, 1);
+      .nft_tokens_for_owner(env::current_account_id(), Some(1), Some(1));
 
     return promise.then(
       Self::ext(env::predecessor_account_id())
@@ -149,11 +150,11 @@ impl Contract {
   }
 
   #[private]
-  pub fn query_token_transfer(token: AccountId, receiver_id: AccountId, token_id: TokenId) -> Promise {
+  pub(crate) fn query_token_transfer(&mut self, token: AccountId, receiver_id: AccountId, token_id: TokenId) -> Promise {
     // Create a promise to call token.nft_supply_for_owner function
-    let promise = TokenNear::ext(token.clone())
+    let promise = token_near::ext(token.clone())
       .with_static_gas(Gas(5*TGAS))
-      .nft_transfer_call(receiver_id, token_id, "");
+      .nft_transfer_call(receiver_id, token_id, None, None, "".to_string());
     
     return promise.then(
       Self::ext(env::predecessor_account_id())
@@ -163,11 +164,11 @@ impl Contract {
   }
 
   #[private]
-  pub fn query_token_transfer_callback(#[callback_result] call_result: Result<bool, PromiseError>) -> String {
+  pub fn query_token_transfer_callback(#[callback_result] call_result: Result<bool, PromiseError>) -> bool {
     // Check if the promise succeeded by calling the method outlined in external.rs
     if call_result.is_err() {
       log!("There was an error contacting token_transfer function in contacting");
-      return "".to_string();
+      return false;
     }
 
     // return the supply
