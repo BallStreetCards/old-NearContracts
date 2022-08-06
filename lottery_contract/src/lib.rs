@@ -1,6 +1,5 @@
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::{env, log, near_bindgen, AccountId, Gas, Promise, PromiseError, PanicOnDefault, Balance, BorshStorageKey};
-use near_sdk::json_types::U128;
+use near_sdk::{env, log, near_bindgen, AccountId, Gas, Promise, PromiseError, PanicOnDefault, Balance};
 use near_sdk::collections::UnorderedSet;
 use near_contract_standards::non_fungible_token::{Token, TokenId};
 
@@ -111,33 +110,6 @@ impl Contract {
     token2_count -= 1;
     (token1_count, token2_count)
   }
-
-  // #[private]
-  // pub(crate) fn query_get_supply(&mut self, token: AccountId) -> Promise {
-  //   // Create a promise to call token.nft_supply_for_owner function
-  //   let promise = token_near::ext(token.clone())
-  //     .with_static_gas(Gas(5*TGAS))
-  //     .nft_supply_for_owner(env::current_account_id());
-    
-  //   return promise.then(
-  //     Self::ext(env::predecessor_account_id())
-  //     .with_static_gas(Gas(5*TGAS))
-  //     .query_get_supply_callback()
-  //   )
-  // }
-
-  // #[private]
-  // pub fn query_get_supply_callback(&self, #[callback_result] call_result: Result<U128, PromiseError>) -> u128 {
-  //   // Check if the promise succeeded by calling the method outlined in external.rs
-  //   if call_result.is_err() {
-  //     log!("There was an error contacting get_supply contract");
-  //     return 0;
-  //   }
-
-  //   // return the supply
-  //   let supply: U128 = call_result.unwrap();
-  //   supply.0
-  // }
 
   #[private]
   pub(crate) fn query_get_token1_id(&mut self, token: AccountId) -> Promise {
